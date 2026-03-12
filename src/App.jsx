@@ -1,35 +1,47 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useEffect, useState } from 'react'
+import Header from './components/Header'
+import AnalysisPage from './pages/AnalysisPage'
+import ExpensesPage from './pages/ExpensesPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import './App.css'
 
+const pageMap = {
+  '/login': LoginPage,
+  '/register': RegisterPage,
+  '/expenses': ExpensesPage,
+  '/analysis': AnalysisPage,
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [path, setPath] = useState(getCurrentPath())
+
+  useEffect(() => {
+    const onPopState = () => setPath(getCurrentPath())
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const navigate = (nextPath) => {
+    window.history.pushState({}, '', nextPath)
+    setPath(nextPath)
+  }
+
+  const PageComponent = pageMap[path] ?? LoginPage
+  const showHeader = path === '/expenses' || path === '/analysis'
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className={`app-shell ${showHeader ? 'app-shell--dashboard' : ''}`}>
+      {showHeader ? <Header currentPath={path} onNavigate={navigate} /> : null}
+      <PageComponent onNavigate={navigate} />
+    </div>
   )
+}
+
+function getCurrentPath() {
+  const knownPaths = Object.keys(pageMap)
+  return knownPaths.includes(window.location.pathname) ? window.location.pathname : '/login'
 }
 
 export default App
