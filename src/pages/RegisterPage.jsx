@@ -6,7 +6,7 @@ const fields = [
   { name: 'password', label: 'Пароль', type: 'password', placeholder: 'Пароль' },
 ]
 
-function RegisterPage({ onNavigate }) {
+function RegisterPage() {
   return (
     <AuthLayout
       title="Регистрация"
@@ -14,7 +14,6 @@ function RegisterPage({ onNavigate }) {
       buttonText="Зарегистрироваться"
       footerText="Уже есть аккаунт?"
       footerAction="/login"
-      onNavigate={onNavigate}
     />
   )
 }

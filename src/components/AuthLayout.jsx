@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom'
 import Logo from './Logo'
 
-function AuthLayout({ title, fields, buttonText, footerText, footerAction, onNavigate }) {
+function AuthLayout({ title, fields, buttonText, footerText, footerAction }) {
   return (
     <main className="auth-screen">
       <div className="auth-screen__brand">
@@ -18,28 +19,20 @@ function AuthLayout({ title, fields, buttonText, footerText, footerAction, onNav
             </label>
           ))}
 
-          <button
-            type="button"
-            className="button button--primary button--full"
-            onClick={() => onNavigate(fieldActionPath(title))}
-          >
+          <Link to="/expenses" className="button button--primary button--full">
             {buttonText}
-          </button>
+          </Link>
         </form>
 
         <p className="auth-card__footer">
           {footerText}{' '}
-          <button type="button" className="auth-card__link" onClick={() => onNavigate(footerAction)}>
+          <Link to={footerAction} className="auth-card__link">
             {footerAction === '/register' ? 'Зарегистрируйтесь здесь' : 'Войдите здесь'}
-          </button>
+          </Link>
         </p>
       </section>
     </main>
   )
-}
-
-function fieldActionPath(title) {
-  return title === 'Регистрация' ? '/expenses' : '/expenses'
 }
 
 export default AuthLayout

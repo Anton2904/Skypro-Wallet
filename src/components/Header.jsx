@@ -1,6 +1,7 @@
+import { Link, NavLink } from 'react-router-dom'
 import Logo from './Logo'
 
-function Header({ currentPath, onNavigate }) {
+function Header() {
   const navItems = [
     { path: '/expenses', label: 'Мои расходы' },
     { path: '/analysis', label: 'Анализ расходов' },
@@ -13,20 +14,19 @@ function Header({ currentPath, onNavigate }) {
 
         <nav className="header__nav" aria-label="Основная навигация">
           {navItems.map((item) => (
-            <button
+            <NavLink
               key={item.path}
-              type="button"
-              className={`header__link ${currentPath === item.path ? 'header__link--active' : ''}`}
-              onClick={() => onNavigate(item.path)}
+              to={item.path}
+              className={({ isActive }) => `header__link ${isActive ? 'header__link--active' : ''}`.trim()}
             >
               {item.label}
-            </button>
+            </NavLink>
           ))}
         </nav>
 
-        <button type="button" className="header__logout" onClick={() => onNavigate('/login')}>
+        <Link to="/login" className="header__logout">
           Выйти
-        </button>
+        </Link>
       </div>
     </header>
   )
