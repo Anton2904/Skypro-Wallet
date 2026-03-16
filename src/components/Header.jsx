@@ -1,35 +1,32 @@
-import { Link, NavLink } from 'react-router-dom'
-import Logo from './Logo'
+import { NavLink } from 'react-router-dom';
+import Logo from './Logo.jsx';
+import { useAuth } from '../hooks/useAuth.js';
 
-function Header() {
-  const navItems = [
-    { path: '/expenses', label: 'Мои расходы' },
-    { path: '/analysis', label: 'Анализ расходов' },
-  ]
+export default function Header() {
+  const { signOut } = useAuth();
 
   return (
-    <header className="header">
-      <div className="header__inner container">
+    <header className="topbar">
+      <div className="topbar-inner">
         <Logo />
-
-        <nav className="header__nav" aria-label="Основная навигация">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `header__link ${isActive ? 'header__link--active' : ''}`.trim()}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="topnav">
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) => (isActive ? 'topnav-link active' : 'topnav-link')}
+          >
+            Мои расходы
+          </NavLink>
+          <NavLink
+            to="/analysis"
+            className={({ isActive }) => (isActive ? 'topnav-link active' : 'topnav-link')}
+          >
+            Анализ расходов
+          </NavLink>
         </nav>
-
-        <Link to="/login" className="header__logout">
+        <button type="button" className="logout-link" onClick={signOut}>
           Выйти
-        </Link>
+        </button>
       </div>
     </header>
-  )
+  );
 }
-
-export default Header
