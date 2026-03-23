@@ -1,10 +1,14 @@
 function Logo() {
   return (
-    <div className="logo-block" aria-label="Skypro Wallet logo">
-      <span className="logo-mark" />
-      <span className="logo-text">Skypro Wallet</span>
+    <div className="logo">
+      <div className="logo__mark" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <span className="logo__text">Skypro.Wallet</span>
     </div>
-  )
+  );
 }
 
-export default Logo
+export default Logo;
