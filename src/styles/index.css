@@ -265,6 +265,16 @@ button {
   opacity: 0.5;
 }
 
+.table-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: #8f8f98;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+}
+
 .expense-form {
   display: flex;
   flex-direction: column;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '../api/authApi';
 import AuthCard from '../components/AuthCard/AuthCard';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { validateLoginForm } from '../utils/validators';
 
 function LoginPage() {

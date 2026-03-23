@@ -1,8 +1,45 @@
-const julyDays = Array.from({ length: 31 }, (_, index) => index + 1);
-const augustDays = Array.from({ length: 11 }, (_, index) => index + 1);
 const weekDays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+const monthFormatter = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
 
-function PeriodCalendar({ period, onPeriodChange }) {
+function getMonthDays(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+
+  return {
+    firstWeekday,
+    totalDays: lastDay.getDate(),
+  };
+}
+
+function isSameDate(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function formatDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function PeriodCalendar({ period, onPeriodChange, selectedDate, onDateChange, availableDates = [] }) {
+  const activeDate = selectedDate ? new Date(selectedDate) : new Date();
+  const monthDays = getMonthDays(activeDate);
+  const availableDatesSet = new Set(availableDates);
+
+  const changeMonth = (offset) => {
+    const nextDate = new Date(activeDate.getFullYear(), activeDate.getMonth() + offset, 1);
+    const nextSelectedDate = formatDateValue(nextDate);
+    onDateChange(nextSelectedDate);
+  };
+
   return (
     <aside className="period-card card">
       <h2 className="card-title">Период</h2>
@@ -12,26 +49,40 @@ function PeriodCalendar({ period, onPeriodChange }) {
         ))}
       </div>
 
-      <div className="month-title">Июль 2024</div>
-      <div className="calendar-grid">
-        {julyDays.map((day) => (
-          <button
-            type="button"
-            key={`july-${day}`}
-            className={`day-pill ${day === 10 ? 'day-pill--active' : ''}`}
-          >
-            {day}
-          </button>
-        ))}
+      <div className="month-nav">
+        <button type="button" className="period-tab" onClick={() => changeMonth(-1)}>
+          ←
+        </button>
+        <div className="month-title">{monthFormatter.format(activeDate)}</div>
+        <button type="button" className="period-tab" onClick={() => changeMonth(1)}>
+          →
+        </button>
       </div>
 
-      <div className="month-title month-title--second">Август 2024</div>
-      <div className="calendar-grid calendar-grid--small">
-        {augustDays.map((day) => (
-          <button type="button" key={`aug-${day}`} className="day-pill day-pill--ghost">
-            {day}
-          </button>
+      <div className="calendar-grid">
+        {Array.from({ length: monthDays.firstWeekday }).map((_, index) => (
+          <span key={`empty-${index}`} className="day-pill day-pill--ghost" aria-hidden="true" />
         ))}
+
+        {Array.from({ length: monthDays.totalDays }, (_, index) => {
+          const day = index + 1;
+          const date = new Date(activeDate.getFullYear(), activeDate.getMonth(), day);
+          const value = formatDateValue(date);
+          const isActive = selectedDate ? isSameDate(date, new Date(selectedDate)) : false;
+          const hasTransactions = availableDatesSet.has(value);
+
+          return (
+            <button
+              type="button"
+              key={value}
+              className={`day-pill ${isActive ? 'day-pill--active' : ''} ${!hasTransactions ? 'day-pill--ghost' : ''}`}
+              onClick={() => onDateChange(value)}
+              title={hasTransactions ? 'Есть расходы в этот день' : 'Расходов в этот день пока нет'}
+            >
+              {day}
+            </button>
+          );
+        })}
       </div>
 
       <div className="period-switcher">
