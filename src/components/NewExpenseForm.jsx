@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import CategoryChips from './CategoryChips';
+import { toInputDate } from '../api/helpers';
 import { validateTransaction } from '../utils/validators';
 
 const initialState = {
   description: '',
-  category: 'Еда',
+  category: 'food',
   date: '',
   amount: '',
 };
@@ -31,7 +32,7 @@ function NewExpenseForm({ onSubmit }) {
     try {
       setIsSubmitting(true);
       setError('');
-      await onSubmit(formData);
+      await onSubmit({ ...formData, sum: Number(formData.amount) });
       setFormData(initialState);
     } catch {
       setError('Не удалось сохранить расход');
@@ -68,7 +69,7 @@ function NewExpenseForm({ onSubmit }) {
           <input
             name="date"
             type="date"
-            value={formData.date}
+            value={formData.date ? toInputDate(formData.date) : ''}
             onChange={handleChange}
             disabled={isSubmitting}
           />

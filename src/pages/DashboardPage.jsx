@@ -12,7 +12,7 @@ function DashboardPage() {
     const loadTransactions = async () => {
       try {
         setError('');
-        const data = await getTransactions();
+        const data = await getTransactions({ sortBy: 'date' });
         setTransactions(data);
       } catch (apiError) {
         setError(apiError.message || 'Не удалось загрузить список расходов');
@@ -25,8 +25,8 @@ function DashboardPage() {
   const handleAdd = async (payload) => {
     try {
       setError('');
-      const createdTransaction = await addTransaction(payload);
-      setTransactions((prev) => [createdTransaction, ...prev]);
+      const data = await addTransaction(payload);
+      setTransactions(data);
     } catch (apiError) {
       setError(apiError.message || 'Не удалось добавить расход');
       throw apiError;
@@ -36,8 +36,8 @@ function DashboardPage() {
   const handleDelete = async (id) => {
     try {
       setError('');
-      await deleteTransaction(id);
-      setTransactions((prev) => prev.filter((item) => item.id !== id));
+      const data = await deleteTransaction(id);
+      setTransactions(data);
     } catch (apiError) {
       setError(apiError.message || 'Не удалось удалить расход');
     }

@@ -1,44 +1,44 @@
 import { api } from './client';
-import { getErrorMessage, normalizeAuthPayload } from './helpers';
+import { getApiErrorMessage, normalizeAuthResponse } from './helpers';
 
-const LOGIN_PATH = import.meta.env.VITE_AUTH_LOGIN_PATH || '/auth/login';
-const REGISTER_PATH = import.meta.env.VITE_AUTH_REGISTER_PATH || '/auth/register';
+const LOGIN_ENDPOINT = '/user/login';
+const REGISTER_ENDPOINT = '/user';
 
-export const registerUser = async ({ name, email, password }) => {
+const buildAuthPayload = ({ login, password, name }) => {
+  const payload = {
+    login: login.trim(),
+    password: password.trim(),
+  };
+
+  if (typeof name === 'string') {
+    payload.name = name.trim();
+  }
+
+  return payload;
+};
+
+export const loginUser = async ({ login, password }) => {
   try {
-    const response = await api.post(REGISTER_PATH, {
-      name,
-      email,
-      password,
-    });
-
-    const payload = normalizeAuthPayload(response.data);
-
-    if (!payload.token) {
-      throw new Error('Сервер не вернул токен после регистрации');
-    }
-
-    return payload;
+    const response = await api.post(LOGIN_ENDPOINT, buildAuthPayload({ login, password }));
+    return normalizeAuthResponse(response.data, { login: login.trim() });
   } catch (error) {
-    throw new Error(getErrorMessage(error, 'Не удалось выполнить регистрацию'));
+    throw new Error(getApiErrorMessage(error, 'Не удалось выполнить вход'));
   }
 };
 
-export const loginUser = async ({ email, password }) => {
+export const registerUser = async ({ name, login, password }) => {
+  const fallbackUser = { name: name.trim(), login: login.trim() };
+
   try {
-    const response = await api.post(LOGIN_PATH, {
-      email,
-      password,
-    });
+    const response = await api.post(REGISTER_ENDPOINT, buildAuthPayload({ name, login, password }));
+    const normalized = normalizeAuthResponse(response.data, fallbackUser);
 
-    const payload = normalizeAuthPayload(response.data);
-
-    if (!payload.token) {
-      throw new Error('Сервер не вернул токен после входа');
+    if (normalized.token) {
+      return normalized;
     }
 
-    return payload;
+    return loginUser({ login, password });
   } catch (error) {
-    throw new Error(getErrorMessage(error, 'Не удалось выполнить вход'));
+    throw new Error(getApiErrorMessage(error, 'Не удалось выполнить регистрацию'));
   }
 };

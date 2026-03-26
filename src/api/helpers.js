@@ -1,96 +1,96 @@
-export const extractData = (payload) => {
-  if (payload && typeof payload === 'object' && 'data' in payload) {
-    return payload.data;
-  }
-
-  return payload;
+export const CATEGORY_LABELS = {
+  food: 'Еда',
+  transport: 'Транспорт',
+  housing: 'Жилье',
+  joy: 'Развлечения',
+  education: 'Образование',
+  others: 'Другое',
 };
 
-export const getErrorMessage = (error, fallbackMessage) => {
-  const responseData = error?.response?.data;
+export const CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
-  if (typeof responseData === 'string' && responseData.trim()) {
-    return responseData;
+const pad = (value) => String(value).padStart(2, '0');
+
+export const toApiDate = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
   }
 
-  if (responseData?.message) {
-    return responseData.message;
-  }
-
-  if (Array.isArray(responseData?.errors) && responseData.errors.length) {
-    const firstError = responseData.errors[0];
-    if (typeof firstError === 'string') return firstError;
-    if (firstError?.message) return firstError.message;
-  }
-
-  if (error?.message) {
-    return error.message;
-  }
-
-  return fallbackMessage;
+  return `${date.getMonth() + 1}-${date.getDate()}-${date.getFullYear()}`;
 };
 
-const toNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const normalizeDate = (value) => {
-  if (!value) return new Date().toISOString().slice(0, 10);
-
+export const toInputDate = (value) => {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return new Date().toISOString().slice(0, 10);
+    return '';
   }
 
-  return date.toISOString().slice(0, 10);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-export const normalizeUser = (user) => ({
-  id: user?.id ?? user?._id ?? user?.userId ?? null,
-  name: user?.name ?? user?.username ?? user?.fullName ?? '',
-  email: user?.email ?? '',
+export const normalizeTransaction = (item) => ({
+  _id: item._id ?? item.id,
+  id: item._id ?? item.id,
+  userId: item.userId,
+  description: item.description ?? '',
+  category: item.category ?? 'others',
+  date: item.date,
+  sum: Number(item.sum ?? item.amount ?? 0),
+  amount: Number(item.sum ?? item.amount ?? 0),
 });
 
-export const normalizeAuthPayload = (payload) => {
-  const data = extractData(payload) || {};
-  const token = data.token ?? data.accessToken ?? data.access_token ?? data.jwt ?? '';
-  const rawUser = data.user ?? data.profile ?? data.result ?? data;
-  const user = normalizeUser(rawUser);
+export const normalizeTransactions = (items) =>
+  Array.isArray(items) ? items.map(normalizeTransaction) : [];
+
+export const normalizeAuthResponse = (data, fallbackUser = {}) => {
+  if (typeof data === 'string') {
+    return {
+      token: data,
+      user: {
+        name: fallbackUser.name ?? fallbackUser.login ?? '',
+        login: fallbackUser.login ?? '',
+        email: fallbackUser.login ?? '',
+      },
+    };
+  }
+
+  const token =
+    data?.token ??
+    data?.accessToken ??
+    data?.user?.token ??
+    data?.user?.accessToken ??
+    data?.data?.token ??
+    data?.data?.accessToken ??
+    '';
+
+  const responseUser = data?.user ?? data?.data?.user ?? data?.data ?? {};
+  const login = responseUser.login ?? fallbackUser.login ?? '';
 
   return {
     token,
-    user,
+    user: {
+      name: responseUser.name ?? fallbackUser.name ?? login,
+      login,
+      email: login,
+    },
   };
 };
 
-export const normalizeTransaction = (transaction) => ({
-  id: String(transaction?.id ?? transaction?._id ?? transaction?.transactionId ?? Date.now()),
-  description: transaction?.description ?? transaction?.title ?? transaction?.name ?? '',
-  category: transaction?.category ?? transaction?.type ?? 'Другое',
-  date: normalizeDate(transaction?.date ?? transaction?.createdAt ?? transaction?.transactionDate),
-  amount: toNumber(transaction?.amount ?? transaction?.sum ?? transaction?.value),
-});
+export const getApiErrorMessage = (error, fallbackMessage) => {
+  const data = error?.response?.data;
 
-export const normalizeTransactions = (payload) => {
-  const data = extractData(payload);
+  const message =
+    data?.error ||
+    data?.message ||
+    data?.details ||
+    (Array.isArray(data?.errors) ? data.errors.join(', ') : '') ||
+    error?.message;
 
-  if (Array.isArray(data)) {
-    return data.map(normalizeTransaction);
-  }
-
-  if (Array.isArray(data?.items)) {
-    return data.items.map(normalizeTransaction);
-  }
-
-  if (Array.isArray(data?.transactions)) {
-    return data.transactions.map(normalizeTransaction);
-  }
-
-  if (Array.isArray(data?.results)) {
-    return data.results.map(normalizeTransaction);
-  }
-
-  return [];
+  return typeof message === 'string' && message.trim() ? message : fallbackMessage;
 };

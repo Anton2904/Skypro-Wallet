@@ -2,103 +2,79 @@ import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import ExpensesChart from '../components/ExpensesChart';
 import PeriodCalendar from '../components/PeriodCalendar';
-import { getTransactions } from '../api/transactionsApi';
+import { CATEGORY_OPTIONS, toInputDate } from '../api/helpers';
+import { getTransactions, getTransactionsByPeriod } from '../api/transactionsApi';
 import { formatDate } from '../utils/formatters';
-
-const categories = ['Еда', 'Транспорт', 'Жилье', 'Развлечения', 'Образование', 'Другое'];
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 const periodTitles = {
   day: 'Расходы за выбранный день',
   week: 'Расходы за 7 дней до выбранной даты',
-  month: 'Расходы за выбранный месяц',
+  month: 'Расходы с начала выбранного месяца до выбранной даты',
 };
-
-const isValidDate = (value) => !Number.isNaN(new Date(value).getTime());
-
-const isSameDay = (left, right) =>
-  left.getFullYear() === right.getFullYear() &&
-  left.getMonth() === right.getMonth() &&
-  left.getDate() === right.getDate();
 
 function AnalysisPage() {
   const [period, setPeriod] = useState('month');
   const [allTransactions, setAllTransactions] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const loadTransactions = async () => {
+    const loadAllTransactions = async () => {
       try {
         setError('');
-        const data = await getTransactions();
+        const data = await getTransactions({ sortBy: 'date' });
         setAllTransactions(data);
 
-        if (data.length && !selectedDate) {
-          setSelectedDate(data[0].date);
+        if (data.length) {
+          setSelectedDate((current) => current || toInputDate(data[0].date));
+        } else {
+          setSelectedDate((current) => current || toInputDate(new Date()));
         }
-      } catch {
-        setError('Не удалось загрузить аналитику');
+      } catch (apiError) {
+        setError(apiError.message || 'Не удалось загрузить аналитику');
       }
     };
 
-    loadTransactions();
-  }, [selectedDate]);
+    loadAllTransactions();
+  }, []);
 
-  const anchorDate = useMemo(() => {
-    if (isValidDate(selectedDate)) {
-      return new Date(selectedDate);
+  useEffect(() => {
+    if (!selectedDate) {
+      return;
     }
 
-    if (allTransactions.length && isValidDate(allTransactions[0].date)) {
-      return new Date(allTransactions[0].date);
-    }
-
-    return new Date();
-  }, [allTransactions, selectedDate]);
-
-  const filteredTransactions = useMemo(() => {
-    return allTransactions.filter((item) => {
-      const itemDate = new Date(item.date);
-
-      if (period === 'day') {
-        return isSameDay(itemDate, anchorDate);
+    const loadPeriodTransactions = async () => {
+      try {
+        setError('');
+        const data = await getTransactionsByPeriod(period, selectedDate);
+        setFilteredTransactions(data);
+      } catch (apiError) {
+        setError(apiError.message || 'Не удалось загрузить аналитику');
       }
+    };
 
-      if (period === 'week') {
-        const start = new Date(anchorDate.getTime() - 6 * DAY_IN_MS);
-        return itemDate >= start && itemDate <= anchorDate;
-      }
-
-      if (period === 'month') {
-        return (
-          itemDate.getFullYear() === anchorDate.getFullYear() &&
-          itemDate.getMonth() === anchorDate.getMonth()
-        );
-      }
-
-      return true;
-    });
-  }, [allTransactions, anchorDate, period]);
+    loadPeriodTransactions();
+  }, [period, selectedDate]);
 
   const chartData = useMemo(
     () =>
-      categories.map((category) => ({
-        name: category,
+      CATEGORY_OPTIONS.map((category) => ({
+        name: category.label,
         value: filteredTransactions
-          .filter((item) => item.category === category)
-          .reduce((sum, item) => sum + Number(item.amount), 0),
+          .filter((item) => item.category === category.value)
+          .reduce((sum, item) => sum + Number(item.sum), 0),
       })),
     [filteredTransactions]
   );
 
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
   const subtitle = filteredTransactions.length
-    ? `${periodTitles[period]}. Опорная дата: ${formatDate(anchorDate)}.`
+    ? `${periodTitles[period]}. Опорная дата: ${formatDate(selectedDate)}.`
     : `${periodTitles[period]}. За выбранный период расходов пока нет.`;
 
   const availableDates = useMemo(
-    () => [...new Set(allTransactions.map((item) => item.date))],
+    () => [...new Set(allTransactions.map((item) => toInputDate(item.date)).filter(Boolean))],
     [allTransactions]
   );
 

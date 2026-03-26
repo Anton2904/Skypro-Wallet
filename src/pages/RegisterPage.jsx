@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { validateRegisterForm } from '../utils/validators';
 
 function RegisterPage() {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', login: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -43,10 +43,10 @@ function RegisterPage() {
       <form className="auth-form" onSubmit={handleSubmit}>
         <input name="name" value={formData.name} onChange={handleChange} placeholder="Имя" />
         <input
-          name="email"
-          value={formData.email}
+          name="login"
+          value={formData.login}
           onChange={handleChange}
-          placeholder="Эл. почта"
+          placeholder="Логин"
         />
         <input
           name="password"

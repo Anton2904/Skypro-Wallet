@@ -1,44 +1,35 @@
 # Skypro Wallet
 
-Skypro Wallet — React-приложение для учета личных расходов с подключением к реальному backend API.
+SPA для учета расходов на React + Vite.
 
-## Что изменено
+## Что реализовано
 
-- убрана работа с транзакциями через `localStorage`
-- авторизация и регистрация выполняются через HTTP-запросы
-- список расходов загружается с сервера
-- создание и удаление расходов выполняются на сервере
-- `localStorage` используется только для хранения токена и данных текущего пользователя
-- добавлен единый `axios`-клиент с автоматической подстановкой `Authorization: Bearer <token>`
+- регистрация: `POST /api/user`
+- вход: `POST /api/user/login`
+- получение расходов: `GET /api/transactions`
+- фильтрация и сортировка расходов через query params API
+- добавление расхода: `POST /api/transactions`
+- удаление расхода: `DELETE /api/transactions/:id`
+- редактирование расхода: `PATCH /api/transactions/:id`
+- аналитика за период: `POST /api/transactions/period`
 
-## Стек технологий
+## Особенности интеграции
 
-- React
-- Vite
-- React Router DOM
-- Axios
-- Recharts
-- ESLint
-- Prettier
+- запросы отправляются через `fetch`
+- тело запроса уходит как валидный JSON через `JSON.stringify(...)`
+- заголовок `Content-Type: application/json` не задается вручную
+- Bearer-токен добавляется только для авторизованных роутов
+- после успешной регистрации приложение автоматически выполняет вход, если сервер не вернул токен сразу
 
-## Настройка окружения
+## Переменные окружения
 
-Создайте файл `.env` на основе примера:
-
-```bash
-cp .env.example .env
-```
-
-Укажите адрес вашего backend и, при необходимости, пути endpoint:
+Создайте `.env` по примеру:
 
 ```env
-VITE_API_URL=http://localhost:3000
-VITE_AUTH_LOGIN_PATH=/auth/login
-VITE_AUTH_REGISTER_PATH=/auth/register
-VITE_TRANSACTIONS_PATH=/transactions
+VITE_API_URL=https://wedev-api.sky.pro/api
 ```
 
-## Запуск проекта
+## Установка
 
 ```bash
 npm install
@@ -49,78 +40,5 @@ npm run dev
 
 ```bash
 npm run build
-```
-
-## Проверка кода
-
-```bash
 npm run lint
 ```
-
-## Какой формат ответов поддерживается
-
-Приложение умеет работать как минимум с такими вариантами ответов backend:
-
-### Авторизация / регистрация
-
-```json
-{
-  "token": "jwt-token",
-  "user": {
-    "id": 1,
-    "name": "Иван",
-    "email": "ivan@example.com"
-  }
-}
-```
-
-или
-
-```json
-{
-  "data": {
-    "accessToken": "jwt-token",
-    "user": {
-      "id": 1,
-      "name": "Иван",
-      "email": "ivan@example.com"
-    }
-  }
-}
-```
-
-### Список транзакций
-
-```json
-[
-  {
-    "id": 1,
-    "description": "Продукты",
-    "category": "Еда",
-    "date": "2026-03-24",
-    "amount": 1500
-  }
-]
-```
-
-или
-
-```json
-{
-  "data": {
-    "items": [
-      {
-        "id": 1,
-        "description": "Продукты",
-        "category": "Еда",
-        "date": "2026-03-24",
-        "amount": 1500
-      }
-    ]
-  }
-}
-```
-
-## Важное замечание
-
-Я не получил от вас документацию backend, поэтому проект подготовлен в рабочем виде с настраиваемыми endpoint через `.env` и с нормализацией нескольких популярных форматов ответов API. Если ваш сервер использует другие поля ответа, их можно быстро подстроить в файле `src/api/helpers.js`.

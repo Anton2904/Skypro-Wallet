@@ -1,33 +1,88 @@
-import axios from 'axios';
-import { getToken, removeToken, removeUser } from '../utils/storage';
+import { getToken, removeToken } from '../utils/storage';
 
-const DEFAULT_BASE_URL = 'http://localhost:3000';
+const DEFAULT_API_URL = 'https://wedev-api.sky.pro/api';
+const baseURL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || DEFAULT_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+const buildUrl = (path, params) => {
+  const url = new URL(`${baseURL}${path}`);
 
-api.interceptors.request.use((config) => {
+  if (params && typeof params === 'object') {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+
+      url.searchParams.set(key, String(value));
+    });
+  }
+
+  return url.toString();
+};
+
+const parseResponseBody = async (response) => {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
+const createError = (status, data, fallbackMessage) => {
+  const message =
+    (typeof data === 'object' && data?.message) ||
+    (typeof data === 'object' && data?.error) ||
+    (typeof data === 'object' && Array.isArray(data?.errors) && data.errors.join(', ')) ||
+    (typeof data === 'string' && data) ||
+    fallbackMessage;
+
+  const error = new Error(message);
+  error.response = { status, data };
+
+  return error;
+};
+
+const request = async (method, path, { params, data, headers: customHeaders } = {}) => {
   const token = getToken();
+  const headers = { ...(customHeaders || {}) };
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  return config;
-});
+  const hasBody = data !== undefined;
+  const body = hasBody ? JSON.stringify(data) : undefined;
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      removeToken();
-      removeUser();
-    }
+  const response = await fetch(buildUrl(path, params), {
+    method,
+    headers,
+    body,
+  });
 
-    return Promise.reject(error);
+  const responseData = await parseResponseBody(response);
+
+  if (response.status === 401) {
+    removeToken();
   }
-);
+
+  if (!response.ok) {
+    throw createError(response.status, responseData, 'Ошибка запроса');
+  }
+
+  return {
+    data: responseData,
+    status: response.status,
+  };
+};
+
+export const api = {
+  get: (path, config = {}) => request('GET', path, { params: config.params, headers: config.headers }),
+  post: (path, data, config = {}) => request('POST', path, { params: config.params, data, headers: config.headers }),
+  patch: (path, data, config = {}) => request('PATCH', path, { params: config.params, data, headers: config.headers }),
+  delete: (path, config = {}) => request('DELETE', path, { params: config.params, headers: config.headers }),
+};

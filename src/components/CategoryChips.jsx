@@ -1,17 +1,17 @@
-const categories = ['Еда', 'Транспорт', 'Жилье', 'Развлечения', 'Образование', 'Другое'];
+import { CATEGORY_OPTIONS } from '../api/helpers';
 
 function CategoryChips({ value, onChange }) {
   return (
     <div className="chips-grid">
-      {categories.map((category) => (
+      {CATEGORY_OPTIONS.map((category) => (
         <button
-          key={category}
+          key={category.value}
           type="button"
-          className={`chip ${value === category ? 'chip--active' : ''}`}
-          onClick={() => onChange(category)}
+          className={`chip ${value === category.value ? 'chip--active' : ''}`}
+          onClick={() => onChange(category.value)}
         >
           <span className="chip__icon">•</span>
-          {category}
+          {category.label}
         </button>
       ))}
     </div>

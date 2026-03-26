@@ -1,3 +1,4 @@
+import { CATEGORY_LABELS } from '../api/helpers';
 import { formatAmount, formatDate } from '../utils/formatters';
 
 function ExpenseTable({ transactions, onDelete }) {
@@ -26,16 +27,16 @@ function ExpenseTable({ transactions, onDelete }) {
           <tbody>
             {transactions.length ? (
               transactions.map((item) => (
-                <tr key={item.id}>
+                <tr key={item._id}>
                   <td>{item.description}</td>
-                  <td>{item.category}</td>
+                  <td>{CATEGORY_LABELS[item.category] ?? item.category}</td>
                   <td>{formatDate(item.date)}</td>
-                  <td>{formatAmount(item.amount)}</td>
+                  <td>{formatAmount(item.sum)}</td>
                   <td>
                     <button
                       type="button"
                       className="delete-btn"
-                      onClick={() => handleDelete(item.id)}
+                      onClick={() => handleDelete(item._id)}
                       aria-label={`Удалить расход ${item.description}`}
                       title="Удалить транзакцию"
                     >
