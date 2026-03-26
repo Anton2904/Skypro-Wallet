@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { validateRegisterForm } from '../utils/validators';
 
 function RegisterPage() {
-  const [formData, setFormData] = useState({ name: 'Ева Иванова', email: 'ivanova@mail.ru', password: '123456' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();

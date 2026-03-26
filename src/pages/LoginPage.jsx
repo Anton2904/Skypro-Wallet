@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { validateLoginForm } from '../utils/validators';
 
 function LoginPage() {
-  const [formData, setFormData] = useState({ email: 'ivanova@mail.ru', password: '123456' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();

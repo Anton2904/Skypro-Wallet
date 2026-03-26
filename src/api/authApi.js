@@ -1,40 +1,44 @@
+import { api } from './client';
+import { getErrorMessage, normalizeAuthPayload } from './helpers';
 
-import { getUser, saveUser } from '../utils/storage';
-
-const wait = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
+const LOGIN_PATH = import.meta.env.VITE_AUTH_LOGIN_PATH || '/auth/login';
+const REGISTER_PATH = import.meta.env.VITE_AUTH_REGISTER_PATH || '/auth/register';
 
 export const registerUser = async ({ name, email, password }) => {
-  await wait();
+  try {
+    const response = await api.post(REGISTER_PATH, {
+      name,
+      email,
+      password,
+    });
 
-  const existingUser = getUser();
-  if (existingUser?.email === email) {
-    throw new Error('Пользователь с такой почтой уже зарегистрирован');
+    const payload = normalizeAuthPayload(response.data);
+
+    if (!payload.token) {
+      throw new Error('Сервер не вернул токен после регистрации');
+    }
+
+    return payload;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось выполнить регистрацию'));
   }
-
-  const user = { name, email, password };
-  saveUser(user);
-
-  return {
-    token: `mock-token-${Date.now()}`,
-    user: { name, email },
-  };
 };
 
 export const loginUser = async ({ email, password }) => {
-  await wait();
+  try {
+    const response = await api.post(LOGIN_PATH, {
+      email,
+      password,
+    });
 
-  const existingUser = getUser();
+    const payload = normalizeAuthPayload(response.data);
 
-  if (!existingUser) {
-    throw new Error('Сначала зарегистрируйтесь');
+    if (!payload.token) {
+      throw new Error('Сервер не вернул токен после входа');
+    }
+
+    return payload;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось выполнить вход'));
   }
-
-  if (existingUser.email !== email || existingUser.password !== password) {
-    throw new Error('Неверная почта или пароль');
-  }
-
-  return {
-    token: `mock-token-${Date.now()}`,
-    user: { name: existingUser.name, email: existingUser.email },
-  };
 };

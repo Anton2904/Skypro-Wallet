@@ -11,10 +11,11 @@ function DashboardPage() {
   useEffect(() => {
     const loadTransactions = async () => {
       try {
+        setError('');
         const data = await getTransactions();
         setTransactions(data);
-      } catch {
-        setError('Не удалось загрузить список расходов');
+      } catch (apiError) {
+        setError(apiError.message || 'Не удалось загрузить список расходов');
       }
     };
 
@@ -23,19 +24,22 @@ function DashboardPage() {
 
   const handleAdd = async (payload) => {
     try {
-      const data = await addTransaction(payload);
-      setTransactions(data);
-    } catch {
-      setError('Не удалось добавить расход');
+      setError('');
+      const createdTransaction = await addTransaction(payload);
+      setTransactions((prev) => [createdTransaction, ...prev]);
+    } catch (apiError) {
+      setError(apiError.message || 'Не удалось добавить расход');
+      throw apiError;
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      const data = await deleteTransaction(id);
-      setTransactions(data);
-    } catch {
-      setError('Не удалось удалить расход');
+      setError('');
+      await deleteTransaction(id);
+      setTransactions((prev) => prev.filter((item) => item.id !== id));
+    } catch (apiError) {
+      setError(apiError.message || 'Не удалось удалить расход');
     }
   };
 
