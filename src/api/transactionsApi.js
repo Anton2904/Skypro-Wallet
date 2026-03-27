@@ -8,24 +8,40 @@ const buildQueryParams = ({ sortBy, filterBy } = {}) => {
     params.sortBy = sortBy;
   }
 
-  if (Array.isArray(filterBy) && filterBy.length) {
+  if (Array.isArray(filterBy) && filterBy.length > 0) {
     params.filterBy = filterBy.join(',');
+  }
+
+  if (typeof filterBy === 'string' && filterBy.trim()) {
+    params.filterBy = filterBy.trim();
   }
 
   return params;
 };
 
 const createTransactionPayload = (transaction) => ({
-  description: transaction.description.trim(),
+  description: String(transaction.description || '').trim(),
   sum: Number(transaction.sum ?? transaction.amount),
   category: transaction.category,
   date: toApiDate(transaction.date),
 });
 
+const normalizeTransactionsList = (data) => {
+  if (!Array.isArray(data)) {
+    return null;
+  }
+
+  return normalizeTransactions(data);
+};
+
 export const getTransactions = async (options = {}) => {
   try {
-    const response = await api.get('/transactions', { params: buildQueryParams(options) });
-    return normalizeTransactions(response.data);
+    const response = await api.get('/transactions', {
+      params: buildQueryParams(options),
+    });
+
+    const normalized = normalizeTransactionsList(response.data);
+    return normalized ?? [];
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Не удалось загрузить список расходов'));
   }
@@ -34,7 +50,7 @@ export const getTransactions = async (options = {}) => {
 export const addTransaction = async (transaction) => {
   try {
     const response = await api.post('/transactions', createTransactionPayload(transaction));
-    return normalizeTransactions(response.data);
+    return normalizeTransactionsList(response.data);
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Не удалось добавить расход'));
   }
@@ -43,7 +59,7 @@ export const addTransaction = async (transaction) => {
 export const deleteTransaction = async (id) => {
   try {
     const response = await api.delete(`/transactions/${id}`);
-    return normalizeTransactions(response.data);
+    return normalizeTransactionsList(response.data);
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Не удалось удалить расход'));
   }
@@ -52,7 +68,7 @@ export const deleteTransaction = async (id) => {
 export const updateTransaction = async (id, transaction) => {
   try {
     const response = await api.patch(`/transactions/${id}`, createTransactionPayload(transaction));
-    return normalizeTransactions(response.data);
+    return normalizeTransactionsList(response.data);
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Не удалось обновить расход'));
   }
@@ -65,7 +81,8 @@ export const getTransactionsByDateRange = async ({ start, end }) => {
       end: toApiDate(end),
     });
 
-    return normalizeTransactions(response.data);
+    const normalized = normalizeTransactionsList(response.data);
+    return normalized ?? [];
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Не удалось загрузить расходы за период'));
   }

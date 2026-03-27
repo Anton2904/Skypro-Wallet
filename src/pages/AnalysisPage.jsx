@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import ExpensesChart from '../components/ExpensesChart';
+import { LoaderBlock } from '../components/LoaderBlock';
 import PeriodCalendar from '../components/PeriodCalendar';
 import { CATEGORY_OPTIONS, toInputDate } from '../api/helpers';
-import { getTransactions, getTransactionsByPeriod } from '../api/transactionsApi';
+import { getTransactionsByPeriod } from '../api/transactionsApi';
+import { useTransactions } from '../context/TransactionsContext';
 import { formatDate } from '../utils/formatters';
 
 const periodTitles = {
@@ -14,30 +16,24 @@ const periodTitles = {
 
 function AnalysisPage() {
   const [period, setPeriod] = useState('month');
-  const [allTransactions, setAllTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
-  const [error, setError] = useState('');
+  const [periodError, setPeriodError] = useState('');
+  const [isPeriodLoading, setIsPeriodLoading] = useState(false);
+  const { transactions, isLoading, error } = useTransactions();
 
   useEffect(() => {
-    const loadAllTransactions = async () => {
-      try {
-        setError('');
-        const data = await getTransactions({ sortBy: 'date' });
-        setAllTransactions(data);
+    if (!transactions.length) {
+      setSelectedDate((current) => current || toInputDate(new Date()));
+      return;
+    }
 
-        if (data.length) {
-          setSelectedDate((current) => current || toInputDate(data[0].date));
-        } else {
-          setSelectedDate((current) => current || toInputDate(new Date()));
-        }
-      } catch (apiError) {
-        setError(apiError.message || 'Не удалось загрузить аналитику');
-      }
-    };
+    const hasCurrentDate = transactions.some((item) => toInputDate(item.date) === selectedDate);
 
-    loadAllTransactions();
-  }, []);
+    if (!selectedDate || !hasCurrentDate) {
+      setSelectedDate(toInputDate(transactions[0].date));
+    }
+  }, [transactions, selectedDate]);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -46,16 +42,19 @@ function AnalysisPage() {
 
     const loadPeriodTransactions = async () => {
       try {
-        setError('');
+        setIsPeriodLoading(true);
+        setPeriodError('');
         const data = await getTransactionsByPeriod(period, selectedDate);
         setFilteredTransactions(data);
       } catch (apiError) {
-        setError(apiError.message || 'Не удалось загрузить аналитику');
+        setPeriodError(apiError.message || 'Не удалось загрузить аналитику');
+      } finally {
+        setIsPeriodLoading(false);
       }
     };
 
     loadPeriodTransactions();
-  }, [period, selectedDate]);
+  }, [period, selectedDate, transactions]);
 
   const chartData = useMemo(
     () =>
@@ -74,8 +73,8 @@ function AnalysisPage() {
     : `${periodTitles[period]}. За выбранный период расходов пока нет.`;
 
   const availableDates = useMemo(
-    () => [...new Set(allTransactions.map((item) => toInputDate(item.date)).filter(Boolean))],
-    [allTransactions]
+    () => [...new Set(transactions.map((item) => toInputDate(item.date)).filter(Boolean))],
+    [transactions]
   );
 
   return (
@@ -84,6 +83,8 @@ function AnalysisPage() {
       <main className="page-content">
         <h1 className="page-title">Анализ расходов</h1>
         {error ? <p className="form-error">{error}</p> : null}
+        {periodError ? <p className="form-error">{periodError}</p> : null}
+        {(isLoading || isPeriodLoading) ? <LoaderBlock text="Загружаем аналитику..." /> : null}
         <div className="analysis-grid">
           <PeriodCalendar
             period={period}

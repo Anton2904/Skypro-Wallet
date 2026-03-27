@@ -49,14 +49,21 @@ const createError = (status, data, fallbackMessage) => {
 
 const request = async (method, path, { params, data, headers: customHeaders } = {}) => {
   const token = getToken();
-  const headers = { ...(customHeaders || {}) };
+  const headers = new Headers(customHeaders || {});
 
   if (token) {
-    headers.Authorization = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const hasBody = data !== undefined;
-  const body = hasBody ? JSON.stringify(data) : undefined;
+  headers.delete('Content-Type');
+  headers.delete('content-type');
+
+  let body;
+
+  if (data !== undefined) {
+    const json = JSON.stringify(data);
+    body = new Blob([json]);
+  }
 
   const response = await fetch(buildUrl(path, params), {
     method,
@@ -81,8 +88,29 @@ const request = async (method, path, { params, data, headers: customHeaders } = 
 };
 
 export const api = {
-  get: (path, config = {}) => request('GET', path, { params: config.params, headers: config.headers }),
-  post: (path, data, config = {}) => request('POST', path, { params: config.params, data, headers: config.headers }),
-  patch: (path, data, config = {}) => request('PATCH', path, { params: config.params, data, headers: config.headers }),
-  delete: (path, config = {}) => request('DELETE', path, { params: config.params, headers: config.headers }),
+  get: (path, config = {}) =>
+    request('GET', path, {
+      params: config.params,
+      headers: config.headers,
+    }),
+
+  post: (path, data, config = {}) =>
+    request('POST', path, {
+      params: config.params,
+      data,
+      headers: config.headers,
+    }),
+
+  patch: (path, data, config = {}) =>
+    request('PATCH', path, {
+      params: config.params,
+      data,
+      headers: config.headers,
+    }),
+
+  delete: (path, config = {}) =>
+    request('DELETE', path, {
+      params: config.params,
+      headers: config.headers,
+    }),
 };
