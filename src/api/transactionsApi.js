@@ -1,60 +1,115 @@
+import { api } from './client';
+import { getApiErrorMessage, normalizeTransactions, toApiDate } from './helpers';
 
-import { seedTransactions } from '../data/seedTransactions';
-import { getTransactionsStorage, saveTransactions } from '../utils/storage';
+const buildQueryParams = ({ sortBy, filterBy } = {}) => {
+  const params = {};
 
-const wait = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const ensureSeed = () => {
-  const current = getTransactionsStorage();
-
-  if (!current || current.length === 0) {
-    saveTransactions(seedTransactions);
-    return seedTransactions;
+  if (sortBy) {
+    params.sortBy = sortBy;
   }
 
-  return current;
+  if (Array.isArray(filterBy) && filterBy.length > 0) {
+    params.filterBy = filterBy.join(',');
+  }
+
+  if (typeof filterBy === 'string' && filterBy.trim()) {
+    params.filterBy = filterBy.trim();
+  }
+
+  return params;
 };
 
-export const getTransactions = async () => {
-  await wait();
-  return ensureSeed();
+const createTransactionPayload = (transaction) => ({
+  description: String(transaction.description || '').trim(),
+  sum: Number(transaction.sum ?? transaction.amount),
+  category: transaction.category,
+  date: toApiDate(transaction.date),
+});
+
+const normalizeTransactionsList = (data) => {
+  if (!Array.isArray(data)) {
+    return null;
+  }
+
+  return normalizeTransactions(data);
+};
+
+export const getTransactions = async (options = {}) => {
+  try {
+    const response = await api.get('/transactions', {
+      params: buildQueryParams(options),
+    });
+
+    const normalized = normalizeTransactionsList(response.data);
+    return normalized ?? [];
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось загрузить список расходов'));
+  }
 };
 
 export const addTransaction = async (transaction) => {
-  await wait();
-
-  const current = ensureSeed();
-  const next = [
-    {
-      id: String(Date.now()),
-      ...transaction,
-      amount: Number(transaction.amount),
-    },
-    ...current,
-  ];
-
-  saveTransactions(next);
-  return next;
+  try {
+    const response = await api.post('/transactions', createTransactionPayload(transaction));
+    return normalizeTransactionsList(response.data);
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось добавить расход'));
+  }
 };
 
 export const deleteTransaction = async (id) => {
-  await wait();
-
-  const current = ensureSeed();
-  const next = current.filter((item) => item.id !== id);
-
-  saveTransactions(next);
-  return next;
+  try {
+    const response = await api.delete(`/transactions/${id}`);
+    return normalizeTransactionsList(response.data);
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось удалить расход'));
+  }
 };
 
-export const getTransactionsByPeriod = async (period) => {
-  await wait();
+export const updateTransaction = async (id, transaction) => {
+  try {
+    const response = await api.patch(`/transactions/${id}`, createTransactionPayload(transaction));
+    return normalizeTransactionsList(response.data);
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось обновить расход'));
+  }
+};
 
-  const current = ensureSeed();
+export const getTransactionsByDateRange = async ({ start, end }) => {
+  try {
+    const response = await api.post('/transactions/period', {
+      start: toApiDate(start),
+      end: toApiDate(end),
+    });
 
-  if (period === 'month') return current;
-  if (period === 'week') return current.slice(0, 7);
-  if (period === 'day') return current.slice(0, 3);
+    const normalized = normalizeTransactionsList(response.data);
+    return normalized ?? [];
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось загрузить расходы за период'));
+  }
+};
 
-  return current;
+export const getTransactionsByPeriod = async (period, anchorDate) => {
+  const end = new Date(anchorDate);
+
+  if (Number.isNaN(end.getTime())) {
+    throw new Error('Некорректная дата периода');
+  }
+
+  const start = new Date(end);
+
+  if (period === 'day') {
+    return getTransactionsByDateRange({ start: end, end });
+  }
+
+  if (period === 'week') {
+    start.setDate(end.getDate() - 6);
+    return getTransactionsByDateRange({ start, end });
+  }
+
+  if (period === 'month') {
+    start.setDate(1);
+    return getTransactionsByDateRange({ start, end });
+  }
+
+  return getTransactions();
 };

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import CategoryChips from './CategoryChips';
+import { toInputDate } from '../api/helpers';
 import { validateTransaction } from '../utils/validators';
 
 const initialState = {
   description: '',
-  category: 'Еда',
+  category: 'food',
   date: '',
   amount: '',
 };
@@ -12,6 +13,7 @@ const initialState = {
 function NewExpenseForm({ onSubmit }) {
   const [formData, setFormData] = useState(initialState);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -21,14 +23,22 @@ function NewExpenseForm({ onSubmit }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const message = validateTransaction(formData);
+
     if (message) {
       setError(message);
       return;
     }
 
-    setError('');
-    await onSubmit(formData);
-    setFormData(initialState);
+    try {
+      setIsSubmitting(true);
+      setError('');
+      await onSubmit({ ...formData, sum: Number(formData.amount) });
+      setFormData(initialState);
+    } catch {
+      setError('Не удалось сохранить расход');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -42,6 +52,7 @@ function NewExpenseForm({ onSubmit }) {
             value={formData.description}
             onChange={handleChange}
             placeholder="Введите описание"
+            disabled={isSubmitting}
           />
         </label>
 
@@ -55,7 +66,13 @@ function NewExpenseForm({ onSubmit }) {
 
         <label>
           <span>Дата</span>
-          <input name="date" type="date" value={formData.date} onChange={handleChange} />
+          <input
+            name="date"
+            type="date"
+            value={formData.date ? toInputDate(formData.date) : ''}
+            onChange={handleChange}
+            disabled={isSubmitting}
+          />
         </label>
 
         <label>
@@ -67,13 +84,14 @@ function NewExpenseForm({ onSubmit }) {
             value={formData.amount}
             onChange={handleChange}
             placeholder="Введите сумму"
+            disabled={isSubmitting}
           />
         </label>
 
         {error ? <p className="form-error">{error}</p> : null}
 
-        <button className="primary-button" type="submit">
-          Добавить новый расход
+        <button className="primary-button" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Сохраняем...' : 'Добавить новый расход'}
         </button>
       </form>
     </div>
