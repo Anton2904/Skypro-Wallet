@@ -85,52 +85,7 @@ function PeriodCalendar({ period, onPeriodChange, selectedDate, onDateChange, av
         <strong>{rangeText}</strong>
       </div>
 
-      <div className="month-nav">
-        <button type="button" className="period-tab period-tab--icon" onClick={() => changeMonth(-1)}>
-          ←
-        </button>
-        <div className="month-title">{monthFormatter.format(activeDate)}</div>
-        <button type="button" className="period-tab period-tab--icon" onClick={() => changeMonth(1)}>
-          →
-        </button>
-      </div>
-
-      <div className="weekday-row">
-        {weekDays.map((day) => (
-          <span key={day}>{day}</span>
-        ))}
-      </div>
-
-      <div className="calendar-grid">
-        {Array.from({ length: monthDays.firstWeekday }).map((_, index) => (
-          <span key={`empty-${index}`} className="day-pill day-pill--empty" aria-hidden="true" />
-        ))}
-
-        {Array.from({ length: monthDays.totalDays }, (_, index) => {
-          const day = index + 1;
-          const date = new Date(activeDate.getFullYear(), activeDate.getMonth(), day);
-          const value = formatDateValue(date);
-          const isSelected = selectedDateObject ? isSameDate(date, selectedDateObject) : false;
-          const isInRange = isDateInRange(date, selectedRange);
-          const hasTransactions = availableDatesSet.has(value);
-
-          return (
-            <button
-              type="button"
-              key={value}
-              className={`day-pill ${isInRange ? 'day-pill--range' : ''} ${isSelected ? 'day-pill--active' : ''} ${hasTransactions ? '' : 'day-pill--ghost'}`}
-              onClick={() => onDateChange(value)}
-              title={hasTransactions ? 'Есть расходы в этот день' : 'Расходов в этот день пока нет'}
-              aria-pressed={isSelected}
-            >
-              <span>{day}</span>
-              {hasTransactions ? <i className="day-pill__dot" aria-hidden="true" /> : null}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="period-switcher">
+      <div className="period-switcher period-switcher--top">
         <button
           type="button"
           className={period === 'day' ? 'period-tab active' : 'period-tab'}
@@ -152,6 +107,62 @@ function PeriodCalendar({ period, onPeriodChange, selectedDate, onDateChange, av
         >
           Месяц
         </button>
+      </div>
+
+      <div className="month-nav">
+        <button type="button" className="period-tab period-tab--icon" onClick={() => changeMonth(-1)} aria-label="Предыдущий месяц">
+          ←
+        </button>
+        <div className="month-title">{monthFormatter.format(activeDate)}</div>
+        <button type="button" className="period-tab period-tab--icon" onClick={() => changeMonth(1)} aria-label="Следующий месяц">
+          →
+        </button>
+      </div>
+
+      <div className="weekday-row">
+        {weekDays.map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+
+      <div className="calendar-grid">
+        {Array.from({ length: monthDays.firstWeekday }).map((_, index) => (
+          <span key={`empty-${index}`} className="day-pill day-pill--empty" aria-hidden="true" />
+        ))}
+
+        {Array.from({ length: monthDays.totalDays }, (_, index) => {
+          const day = index + 1;
+          const date = new Date(activeDate.getFullYear(), activeDate.getMonth(), day);
+          const value = formatDateValue(date);
+          const isSelected = selectedDateObject ? isSameDate(date, selectedDateObject) : false;
+          const isInRange = isDateInRange(date, selectedRange);
+          const isRangeStart = selectedRange ? isSameDate(date, selectedRange.start) : false;
+          const isRangeEnd = selectedRange ? isSameDate(date, selectedRange.end) : false;
+          const hasTransactions = availableDatesSet.has(value);
+
+          return (
+            <button
+              type="button"
+              key={value}
+              className={[
+                'day-pill',
+                isInRange ? 'day-pill--range' : '',
+                isSelected ? 'day-pill--active' : '',
+                isRangeStart ? 'day-pill--range-start' : '',
+                isRangeEnd ? 'day-pill--range-end' : '',
+                hasTransactions ? '' : 'day-pill--ghost',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => onDateChange(value)}
+              title={hasTransactions ? 'Есть расходы в этот день' : 'Расходов в этот день пока нет'}
+              aria-pressed={isSelected}
+            >
+              <span>{day}</span>
+              {hasTransactions ? <i className="day-pill__dot" aria-hidden="true" /> : null}
+            </button>
+          );
+        })}
       </div>
 
       <div className="calendar-legend" aria-label="Подсказка по календарю">
