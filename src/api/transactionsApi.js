@@ -26,12 +26,29 @@ const createTransactionPayload = (transaction) => ({
   date: toApiDate(transaction.date),
 });
 
-const normalizeTransactionsList = (data) => {
-  if (!Array.isArray(data)) {
-    return null;
+const extractTransactionsArray = (data) => {
+  if (Array.isArray(data)) {
+    return data;
   }
 
-  return normalizeTransactions(data);
+  if (Array.isArray(data?.transactions)) {
+    return data.transactions;
+  }
+
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
+
+  if (Array.isArray(data?.items)) {
+    return data.items;
+  }
+
+  return null;
+};
+
+const normalizeTransactionsList = (data) => {
+  const items = extractTransactionsArray(data);
+  return items ? normalizeTransactions(items) : null;
 };
 
 export const getTransactions = async (options = {}) => {

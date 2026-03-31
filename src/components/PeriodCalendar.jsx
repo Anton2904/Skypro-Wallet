@@ -1,26 +1,15 @@
-const weekDays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+const WEEK_DAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 const monthFormatter = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
-const dateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-function getMonthDays(date) {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const firstWeekday = (firstDay.getDay() + 6) % 7;
+function normalizeDate(value) {
+  const date = value instanceof Date ? new Date(value) : new Date(value);
 
-  return {
-    firstWeekday,
-    totalDays: lastDay.getDate(),
-  };
-}
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
 
-function isSameDate(left, right) {
-  return (
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate()
-  );
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
 function formatDateValue(date) {
@@ -30,145 +19,130 @@ function formatDateValue(date) {
   return `${year}-${month}-${day}`;
 }
 
-function getPeriodRange(period, selectedDate) {
-  const end = new Date(selectedDate);
-  end.setHours(0, 0, 0, 0);
-
-  const start = new Date(end);
-
-  if (period === 'week') {
-    start.setDate(end.getDate() - 6);
-  }
-
-  if (period === 'month') {
-    start.setDate(1);
-  }
-
-  return { start, end };
+function isSameDate(left, right) {
+  return Boolean(left && right) && left.getTime() === right.getTime();
 }
 
-function isDateInRange(date, range) {
-  if (!range) {
+function isDateInRange(date, startDate, endDate) {
+  if (!startDate || !endDate) {
     return false;
   }
 
-  const current = new Date(date);
-  current.setHours(0, 0, 0, 0);
-
-  return current >= range.start && current <= range.end;
+  const time = date.getTime();
+  return time >= startDate.getTime() && time <= endDate.getTime();
 }
 
-function PeriodCalendar({ period, onPeriodChange, selectedDate, onDateChange, availableDates = [] }) {
-  const activeDate = selectedDate ? new Date(selectedDate) : new Date();
-  const monthDays = getMonthDays(activeDate);
-  const availableDatesSet = new Set(availableDates);
-  const selectedDateObject = selectedDate ? new Date(selectedDate) : null;
-  const selectedRange = selectedDateObject ? getPeriodRange(period, selectedDateObject) : null;
-  const rangeText = selectedRange
-    ? `${dateFormatter.format(selectedRange.start)} — ${dateFormatter.format(selectedRange.end)}`
-    : 'Период не выбран';
+function buildMonth(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+  const cells = [];
 
-  const changeMonth = (offset) => {
-    const nextDate = new Date(activeDate.getFullYear(), activeDate.getMonth() + offset, 1);
-    const currentDay = selectedDateObject?.getDate() ?? 1;
-    const safeDay = Math.min(currentDay, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate());
-    nextDate.setDate(safeDay);
-    onDateChange(formatDateValue(nextDate));
+  for (let index = 0; index < firstWeekday; index += 1) {
+    cells.push(null);
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    cells.push(new Date(year, month, day));
+  }
+
+  return cells;
+}
+
+function PeriodCalendar({ startDate, endDate, onRangeChange, availableDates = [] }) {
+  const normalizedStart = normalizeDate(startDate);
+  const normalizedEnd = normalizeDate(endDate);
+  const anchorDate = normalizedEnd || normalizedStart || normalizeDate(new Date());
+  const activeYear = anchorDate.getFullYear();
+  const availableDatesSet = new Set(availableDates);
+  const months = Array.from({ length: 12 }, (_, monthIndex) => new Date(activeYear, monthIndex, 1));
+
+  const handleDayClick = (date) => {
+    const clickedValue = formatDateValue(date);
+
+    if (!normalizedStart || (normalizedStart && normalizedEnd)) {
+      onRangeChange({ start: clickedValue, end: '' });
+      return;
+    }
+
+    if (date.getTime() < normalizedStart.getTime()) {
+      onRangeChange({
+        start: clickedValue,
+        end: formatDateValue(normalizedStart),
+      });
+      return;
+    }
+
+    onRangeChange({
+      start: formatDateValue(normalizedStart),
+      end: clickedValue,
+    });
   };
 
   return (
     <aside className="period-card card">
       <h2 className="card-title">Период</h2>
 
-      <div className="period-summary">
-        <span className="period-summary__label">Выбранный интервал</span>
-        <strong>{rangeText}</strong>
-      </div>
-
-      <div className="period-switcher period-switcher--top">
-        <button
-          type="button"
-          className={period === 'day' ? 'period-tab active' : 'period-tab'}
-          onClick={() => onPeriodChange('day')}
-        >
-          День
-        </button>
-        <button
-          type="button"
-          className={period === 'week' ? 'period-tab active' : 'period-tab'}
-          onClick={() => onPeriodChange('week')}
-        >
-          Неделя
-        </button>
-        <button
-          type="button"
-          className={period === 'month' ? 'period-tab active' : 'period-tab'}
-          onClick={() => onPeriodChange('month')}
-        >
-          Месяц
-        </button>
-      </div>
-
-      <div className="month-nav">
-        <button type="button" className="period-tab period-tab--icon" onClick={() => changeMonth(-1)} aria-label="Предыдущий месяц">
-          ←
-        </button>
-        <div className="month-title">{monthFormatter.format(activeDate)}</div>
-        <button type="button" className="period-tab period-tab--icon" onClick={() => changeMonth(1)} aria-label="Следующий месяц">
-          →
-        </button>
-      </div>
-
-      <div className="weekday-row">
-        {weekDays.map((day) => (
-          <span key={day}>{day}</span>
-        ))}
-      </div>
-
-      <div className="calendar-grid">
-        {Array.from({ length: monthDays.firstWeekday }).map((_, index) => (
-          <span key={`empty-${index}`} className="day-pill day-pill--empty" aria-hidden="true" />
-        ))}
-
-        {Array.from({ length: monthDays.totalDays }, (_, index) => {
-          const day = index + 1;
-          const date = new Date(activeDate.getFullYear(), activeDate.getMonth(), day);
-          const value = formatDateValue(date);
-          const isSelected = selectedDateObject ? isSameDate(date, selectedDateObject) : false;
-          const isInRange = isDateInRange(date, selectedRange);
-          const isRangeStart = selectedRange ? isSameDate(date, selectedRange.start) : false;
-          const isRangeEnd = selectedRange ? isSameDate(date, selectedRange.end) : false;
-          const hasTransactions = availableDatesSet.has(value);
+      <div className="calendar-scroll">
+        {months.map((monthDate) => {
+          const monthCells = buildMonth(monthDate);
 
           return (
-            <button
-              type="button"
-              key={value}
-              className={[
-                'day-pill',
-                isInRange ? 'day-pill--range' : '',
-                isSelected ? 'day-pill--active' : '',
-                isRangeStart ? 'day-pill--range-start' : '',
-                isRangeEnd ? 'day-pill--range-end' : '',
-                hasTransactions ? '' : 'day-pill--ghost',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => onDateChange(value)}
-              title={hasTransactions ? 'Есть расходы в этот день' : 'Расходов в этот день пока нет'}
-              aria-pressed={isSelected}
-            >
-              <span>{day}</span>
-              {hasTransactions ? <i className="day-pill__dot" aria-hidden="true" /> : null}
-            </button>
+            <section className="calendar-month" key={monthDate.toISOString()}>
+              <h3 className="calendar-month__title">{monthFormatter.format(monthDate)}</h3>
+
+              <div className="calendar-weekdays">
+                {WEEK_DAYS.map((day) => (
+                  <span key={`${monthDate.getMonth()}-${day}`}>{day}</span>
+                ))}
+              </div>
+
+              <div className="calendar-grid calendar-grid--month">
+                {monthCells.map((cell, index) => {
+                  if (!cell) {
+                    return <span key={`empty-${monthDate.getMonth()}-${index}`} className="calendar-day calendar-day--empty" />;
+                  }
+
+                  const value = formatDateValue(cell);
+                  const isStart = isSameDate(cell, normalizedStart);
+                  const isEnd = isSameDate(cell, normalizedEnd);
+                  const isSelected = isStart || isEnd;
+                  const isInSelectedRange = isDateInRange(cell, normalizedStart, normalizedEnd);
+                  const hasTransactions = availableDatesSet.has(value);
+
+                  return (
+                    <button
+                      type="button"
+                      key={value}
+                      className={[
+                        'calendar-day',
+                        isInSelectedRange ? 'calendar-day--range' : '',
+                        isSelected ? 'calendar-day--selected' : '',
+                        isStart ? 'calendar-day--start' : '',
+                        isEnd ? 'calendar-day--end' : '',
+                        hasTransactions ? 'calendar-day--has-data' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => handleDayClick(cell)}
+                      aria-pressed={isSelected}
+                    >
+                      <span>{cell.getDate()}</span>
+                      {hasTransactions ? <i className="calendar-day__dot" aria-hidden="true" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           );
         })}
       </div>
 
-      <div className="calendar-legend" aria-label="Подсказка по календарю">
-        <span><i className="legend-dot legend-dot--selected" /> Выбранная дата</span>
-        <span><i className="legend-dot legend-dot--range" /> Период анализа</span>
-        <span><i className="legend-dot legend-dot--has-data" /> Есть расходы</span>
+      <div className="calendar-hint">
+        <span>Выберите период двумя кликами: начало и конец.</span>
+        <span>Третий клик начинает новый интервал.</span>
       </div>
     </aside>
   );

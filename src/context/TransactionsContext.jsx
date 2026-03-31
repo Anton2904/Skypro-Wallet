@@ -8,9 +8,6 @@ import {
 
 const TransactionsContext = createContext(null);
 
-const sortTransactionsByDate = (items = []) =>
-  [...items].sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
-
 export function TransactionsProvider({ children }) {
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,9 +19,10 @@ export function TransactionsProvider({ children }) {
       setError('');
 
       const data = await getTransactions({ sortBy: 'date', ...options });
-      const nextTransactions = Array.isArray(data) ? sortTransactionsByDate(data) : [];
+      const nextTransactions = Array.isArray(data) ? data : [];
 
       setTransactions(nextTransactions);
+
       return nextTransactions;
     } catch (apiError) {
       const message = apiError.message || 'Не удалось загрузить список расходов';
@@ -39,59 +37,61 @@ export function TransactionsProvider({ children }) {
     refreshTransactions().catch(() => {});
   }, [refreshTransactions]);
 
-  const applyMutationResult = useCallback((responseData, fallbackMessage) => {
+  const applyServerTransactions = useCallback((responseData, fallbackMessage) => {
     if (!Array.isArray(responseData)) {
       throw new Error(fallbackMessage);
     }
 
-    const nextTransactions = sortTransactionsByDate(responseData);
-    setTransactions(nextTransactions);
-    return nextTransactions;
+    setTransactions(responseData);
+    return responseData;
   }, []);
 
   const createTransaction = useCallback(
     async (payload) => {
       try {
         setError('');
+
         const response = await addTransactionRequest(payload);
-        return applyMutationResult(response, 'Сервер вернул некорректный список расходов после добавления');
+        return applyServerTransactions(response, 'Сервер вернул некорректный список расходов после удаления');
       } catch (apiError) {
         const message = apiError.message || 'Не удалось добавить расход';
         setError(message);
         throw apiError;
       }
     },
-    [applyMutationResult]
+    [applyServerTransactions]
   );
 
   const removeTransaction = useCallback(
     async (id) => {
       try {
         setError('');
+
         const response = await deleteTransactionRequest(id);
-        return applyMutationResult(response, 'Сервер вернул некорректный список расходов после удаления');
+        return applyServerTransactions(response, 'Сервер вернул некорректный список расходов после обновления');
       } catch (apiError) {
         const message = apiError.message || 'Не удалось удалить расход';
         setError(message);
         throw apiError;
       }
     },
-    [applyMutationResult]
+    [applyServerTransactions]
   );
 
   const editTransaction = useCallback(
     async (id, payload) => {
       try {
         setError('');
+
         const response = await updateTransactionRequest(id, payload);
-        return applyMutationResult(response, 'Сервер вернул некорректный список расходов после обновления');
+        return applyServerTransactions(response, 'Сервер вернул некорректный список расходов после добавления');
       } catch (apiError) {
         const message = apiError.message || 'Не удалось обновить расход';
         setError(message);
         throw apiError;
       }
     },
-    [applyMutationResult]
+    [applyServerTransactions]
   );
 
   const value = useMemo(

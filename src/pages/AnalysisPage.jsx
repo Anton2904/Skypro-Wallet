@@ -4,39 +4,37 @@ import ExpensesChart from '../components/ExpensesChart';
 import { LoaderBlock } from '../components/LoaderBlock';
 import PeriodCalendar from '../components/PeriodCalendar';
 import { CATEGORY_OPTIONS, toInputDate } from '../api/helpers';
-import { getTransactionsByPeriod } from '../api/transactionsApi';
+import { getTransactionsByDateRange } from '../api/transactionsApi';
 import { useTransactions } from '../context/TransactionsContext';
-import { formatDate } from '../utils/formatters';
-
-const periodTitles = {
-  day: 'Расходы за выбранный день',
-  week: 'Расходы за 7 дней до выбранной даты',
-  month: 'Расходы с начала выбранного месяца до выбранной даты',
-};
+import { formatDateRange } from '../utils/formatters';
 
 function AnalysisPage() {
-  const [period, setPeriod] = useState('month');
+  const [range, setRange] = useState({ start: '', end: '' });
   const [filteredTransactions, setFilteredTransactions] = useState([]);
-  const [selectedDate, setSelectedDate] = useState('');
   const [periodError, setPeriodError] = useState('');
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
   const { transactions, isLoading, error } = useTransactions();
 
   useEffect(() => {
     if (!transactions.length) {
-      setSelectedDate((current) => current || toInputDate(new Date()));
+      const today = toInputDate(new Date());
+      setRange((current) => (current.start ? current : { start: today, end: today }));
       return;
     }
 
-    const hasCurrentDate = transactions.some((item) => toInputDate(item.date) === selectedDate);
+    setRange((current) => {
+      if (current.start && current.end) {
+        return current;
+      }
 
-    if (!selectedDate || !hasCurrentDate) {
-      setSelectedDate(toInputDate(transactions[0].date));
-    }
-  }, [transactions, selectedDate]);
+      const latestDate = toInputDate(transactions[0].date);
+      return { start: latestDate, end: latestDate };
+    });
+  }, [transactions]);
 
   useEffect(() => {
-    if (!selectedDate) {
+    if (!range.start || !range.end) {
+      setFilteredTransactions([]);
       return;
     }
 
@@ -44,7 +42,7 @@ function AnalysisPage() {
       try {
         setIsPeriodLoading(true);
         setPeriodError('');
-        const data = await getTransactionsByPeriod(period, selectedDate);
+        const data = await getTransactionsByDateRange({ start: range.start, end: range.end });
         setFilteredTransactions(data);
       } catch (apiError) {
         setPeriodError(apiError.message || 'Не удалось загрузить аналитику');
@@ -54,7 +52,7 @@ function AnalysisPage() {
     };
 
     loadPeriodTransactions();
-  }, [period, selectedDate, transactions]);
+  }, [range.start, range.end]);
 
   const chartData = useMemo(
     () =>
@@ -68,9 +66,13 @@ function AnalysisPage() {
   );
 
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
-  const subtitle = filteredTransactions.length
-    ? `${periodTitles[period]}. Опорная дата: ${formatDate(selectedDate)}.`
-    : `${periodTitles[period]}. За выбранный период расходов пока нет.`;
+  const subtitle = !range.start
+    ? 'Выберите начальную дату периода.'
+    : !range.end
+      ? 'Выберите конечную дату периода вторым кликом.'
+      : filteredTransactions.length
+        ? `Расходы за период ${formatDateRange(range.start, range.end)}.`
+        : `За период ${formatDateRange(range.start, range.end)} расходов пока нет.`;
 
   const availableDates = useMemo(
     () => [...new Set(transactions.map((item) => toInputDate(item.date)).filter(Boolean))],
@@ -84,13 +86,12 @@ function AnalysisPage() {
         <h1 className="page-title">Анализ расходов</h1>
         {error ? <p className="form-error">{error}</p> : null}
         {periodError ? <p className="form-error">{periodError}</p> : null}
-        {(isLoading || isPeriodLoading) ? <LoaderBlock text="Загружаем аналитику..." /> : null}
+        {isLoading || isPeriodLoading ? <LoaderBlock text="Загружаем аналитику..." /> : null}
         <div className="analysis-grid">
           <PeriodCalendar
-            period={period}
-            onPeriodChange={setPeriod}
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
+            startDate={range.start}
+            endDate={range.end}
+            onRangeChange={setRange}
             availableDates={availableDates}
           />
           <ExpensesChart data={chartData} total={total} subtitle={subtitle} />
