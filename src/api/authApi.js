@@ -1,40 +1,44 @@
+import { api } from './client';
+import { getApiErrorMessage, normalizeAuthResponse } from './helpers';
 
-import { getUser, saveUser } from '../utils/storage';
+const LOGIN_ENDPOINT = '/user/login';
+const REGISTER_ENDPOINT = '/user';
 
-const wait = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
+const buildAuthPayload = ({ login, password, name }) => {
+  const payload = {
+    login: login.trim(),
+    password: password.trim(),
+  };
 
-export const registerUser = async ({ name, email, password }) => {
-  await wait();
-
-  const existingUser = getUser();
-  if (existingUser?.email === email) {
-    throw new Error('Пользователь с такой почтой уже зарегистрирован');
+  if (typeof name === 'string') {
+    payload.name = name.trim();
   }
 
-  const user = { name, email, password };
-  saveUser(user);
-
-  return {
-    token: `mock-token-${Date.now()}`,
-    user: { name, email },
-  };
+  return payload;
 };
 
-export const loginUser = async ({ email, password }) => {
-  await wait();
-
-  const existingUser = getUser();
-
-  if (!existingUser) {
-    throw new Error('Сначала зарегистрируйтесь');
+export const loginUser = async ({ login, password }) => {
+  try {
+    const response = await api.post(LOGIN_ENDPOINT, buildAuthPayload({ login, password }));
+    return normalizeAuthResponse(response.data, { login: login.trim() });
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось выполнить вход'));
   }
+};
 
-  if (existingUser.email !== email || existingUser.password !== password) {
-    throw new Error('Неверная почта или пароль');
+export const registerUser = async ({ name, login, password }) => {
+  const fallbackUser = { name: name.trim(), login: login.trim() };
+
+  try {
+    const response = await api.post(REGISTER_ENDPOINT, buildAuthPayload({ name, login, password }));
+    const normalized = normalizeAuthResponse(response.data, fallbackUser);
+
+    if (normalized.token) {
+      return normalized;
+    }
+
+    return loginUser({ login, password });
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Не удалось выполнить регистрацию'));
   }
-
-  return {
-    token: `mock-token-${Date.now()}`,
-    user: { name: existingUser.name, email: existingUser.email },
-  };
 };

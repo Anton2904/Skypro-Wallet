@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '../api/authApi';
 import AuthCard from '../components/AuthCard/AuthCard';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { validateLoginForm } from '../utils/validators';
 
 function LoginPage() {
-  const [formData, setFormData] = useState({ email: 'ivanova@mail.ru', password: '123456' });
+  const [formData, setFormData] = useState({ login: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -42,10 +42,10 @@ function LoginPage() {
     <AuthCard title="Вход">
       <form className="auth-form" onSubmit={handleSubmit}>
         <input
-          name="email"
-          value={formData.email}
+          name="login"
+          value={formData.login}
           onChange={handleChange}
-          placeholder="Эл. почта"
+          placeholder="Логин"
         />
         <input
           name="password"

@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 function AppHeader() {
   const { logout } = useAuth();

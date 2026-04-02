@@ -1,11 +1,11 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../hooks/useAuth';
 
 export default function GuestRoute({ children }) {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  if (token) {
-    return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) {
+    return <Navigate to="/expenses" replace />;
   }
 
   return children;

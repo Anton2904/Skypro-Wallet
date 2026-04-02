@@ -1,38 +1,83 @@
 import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import ExpensesChart from '../components/ExpensesChart';
+import { LoaderBlock } from '../components/LoaderBlock';
 import PeriodCalendar from '../components/PeriodCalendar';
-import { getTransactionsByPeriod } from '../api/transactionsApi';
+import { CATEGORY_OPTIONS, toInputDate } from '../api/helpers';
+import { getTransactionsByDateRange } from '../api/transactionsApi';
+import { useTransactions } from '../context/TransactionsContext';
+import { formatDateRange } from '../utils/formatters';
 
 function AnalysisPage() {
-  const [period, setPeriod] = useState('month');
-  const [transactions, setTransactions] = useState([]);
-  const [error, setError] = useState('');
+  const [range, setRange] = useState({ start: '', end: '' });
+  const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [periodError, setPeriodError] = useState('');
+  const [isPeriodLoading, setIsPeriodLoading] = useState(false);
+  const { transactions, isLoading, error } = useTransactions();
 
   useEffect(() => {
-    const loadTransactions = async () => {
+    if (!transactions.length) {
+      const today = toInputDate(new Date());
+      setRange((current) => (current.start ? current : { start: today, end: today }));
+      return;
+    }
+
+    setRange((current) => {
+      if (current.start && current.end) {
+        return current;
+      }
+
+      const latestDate = toInputDate(transactions[0].date);
+      return { start: latestDate, end: latestDate };
+    });
+  }, [transactions]);
+
+  useEffect(() => {
+    if (!range.start || !range.end) {
+      setFilteredTransactions([]);
+      return;
+    }
+
+    const loadPeriodTransactions = async () => {
       try {
-        const data = await getTransactionsByPeriod(period);
-        setTransactions(data);
-      } catch {
-        setError('Не удалось загрузить аналитику');
+        setIsPeriodLoading(true);
+        setPeriodError('');
+        const data = await getTransactionsByDateRange({ start: range.start, end: range.end });
+        setFilteredTransactions(data);
+      } catch (apiError) {
+        setPeriodError(apiError.message || 'Не удалось загрузить аналитику');
+      } finally {
+        setIsPeriodLoading(false);
       }
     };
 
-    loadTransactions();
-  }, [period]);
+    loadPeriodTransactions();
+  }, [range.start, range.end]);
 
-  const chartData = useMemo(() => {
-    const categories = ['Еда', 'Транспорт', 'Жилье', 'Развлечения', 'Образование', 'Другое'];
-    return categories.map((category) => ({
-      name: category,
-      value: transactions
-        .filter((item) => item.category === category)
-        .reduce((sum, item) => sum + Number(item.amount), 0),
-    }));
-  }, [transactions]);
+  const chartData = useMemo(
+    () =>
+      CATEGORY_OPTIONS.map((category) => ({
+        name: category.label,
+        value: filteredTransactions
+          .filter((item) => item.category === category.value)
+          .reduce((sum, item) => sum + Number(item.sum), 0),
+      })),
+    [filteredTransactions]
+  );
 
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
+  const subtitle = !range.start
+    ? 'Выберите начальную дату периода.'
+    : !range.end
+      ? 'Выберите конечную дату периода вторым кликом.'
+      : filteredTransactions.length
+        ? `Расходы за период ${formatDateRange(range.start, range.end)}.`
+        : `За период ${formatDateRange(range.start, range.end)} расходов пока нет.`;
+
+  const availableDates = useMemo(
+    () => [...new Set(transactions.map((item) => toInputDate(item.date)).filter(Boolean))],
+    [transactions]
+  );
 
   return (
     <div className="app-shell">
@@ -40,9 +85,16 @@ function AnalysisPage() {
       <main className="page-content">
         <h1 className="page-title">Анализ расходов</h1>
         {error ? <p className="form-error">{error}</p> : null}
+        {periodError ? <p className="form-error">{periodError}</p> : null}
+        {isLoading || isPeriodLoading ? <LoaderBlock text="Загружаем аналитику..." /> : null}
         <div className="analysis-grid">
-          <PeriodCalendar period={period} onPeriodChange={setPeriod} />
-          <ExpensesChart data={chartData} total={total} />
+          <PeriodCalendar
+            startDate={range.start}
+            endDate={range.end}
+            onRangeChange={setRange}
+            availableDates={availableDates}
+          />
+          <ExpensesChart data={chartData} total={total} subtitle={subtitle} />
         </div>
       </main>
     </div>

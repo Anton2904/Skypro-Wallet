@@ -12,11 +12,11 @@ import { formatAmount } from '../utils/formatters';
 
 const colors = ['#c8a7ff', '#f7b53f', '#7fdcff', '#a6a2ff', '#b5e52f', '#efb2b2'];
 
-function ExpensesChart({ data, total }) {
+function ExpensesChart({ data, total, subtitle }) {
   return (
     <section className="chart-card card">
       <div className="chart-total">{formatAmount(total)}</div>
-      <p className="chart-subtitle">Расходы за 10 июля 2024</p>
+      <p className="chart-subtitle">{subtitle}</p>
 
       <div className="chart-box">
         <ResponsiveContainer width="100%" height={300}>
